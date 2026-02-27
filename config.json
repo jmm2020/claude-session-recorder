@@ -1,0 +1,7 @@
+{
+  "max_sessions": 20,
+  "max_decisions": 5,
+  "max_files_shown": 10,
+  "related_sessions_limit": 3,
+  "verbose_logging": false
+}
