@@ -7,7 +7,7 @@ Give Claude Code a memory that persists across sessions and survives context com
 ## Quick Start
 
 ```bash
-git clone https://github.com/your-org/claude-session-recorder.git
+git clone https://github.com/jmm2020/claude-session-recorder.git
 cd claude-session-recorder
 bash install.sh
 ```
@@ -100,7 +100,7 @@ Edit `~/.claude/hooks/session-recorder/config.json`:
 ## Requirements
 
 - **Python 3.8+** (uses only stdlib — zero pip dependencies)
-- **Claude Code** with hook support (2.1.49+)
+- **Claude Code** with hook support (2.1.0+, matcher format requires 2.1.49+)
 - **Linux or macOS** (Windows WSL should work but is untested)
 
 ## Uninstall

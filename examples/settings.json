@@ -2,20 +2,35 @@
   "hooks": {
     "SessionStart": [
       {
-        "type": "command",
-        "command": "python3 ~/.claude/hooks/session-recorder/session_start.py"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/session-recorder/session_start.py"
+          }
+        ]
       }
     ],
     "Stop": [
       {
-        "type": "command",
-        "command": "python3 ~/.claude/hooks/session-recorder/stop.py"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/session-recorder/stop.py"
+          }
+        ]
       }
     ],
     "PreCompact": [
       {
-        "type": "command",
-        "command": "python3 ~/.claude/hooks/session-recorder/pre_compact.py"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/hooks/session-recorder/pre_compact.py"
+          }
+        ]
       }
     ]
   }

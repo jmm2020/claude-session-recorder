@@ -17,7 +17,7 @@ from datetime import datetime
 
 # Redirect stdout to /dev/null IMMEDIATELY
 _real_stderr = sys.stderr
-_devnull = open(os.devnull, "w")
+_devnull = open(os.devnull, "w")  # noqa: SIM115 — intentionally kept open for process lifetime
 sys.stdout = _devnull
 
 # Add lib directory to path

@@ -18,7 +18,7 @@ from datetime import datetime
 # Redirect stdout to /dev/null IMMEDIATELY — before any imports.
 # Libraries sometimes print warnings to stdout which breaks Claude Code.
 _real_stderr = sys.stderr
-_devnull = open(os.devnull, "w")
+_devnull = open(os.devnull, "w")  # noqa: SIM115 — intentionally kept open for process lifetime
 sys.stdout = _devnull
 
 # Add lib directory to path

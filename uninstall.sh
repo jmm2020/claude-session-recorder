@@ -51,10 +51,24 @@ changed = False
 for event_name in list(hooks.keys()):
     if isinstance(hooks[event_name], list):
         original_len = len(hooks[event_name])
-        hooks[event_name] = [
-            h for h in hooks[event_name]
-            if not (isinstance(h, dict) and marker in h.get("command", ""))
-        ]
+        filtered = []
+        for h in hooks[event_name]:
+            if not isinstance(h, dict):
+                filtered.append(h)
+                continue
+            # Check old format (flat hook object)
+            if marker in h.get("command", ""):
+                continue
+            # Check new format (matcher group with inner hooks array)
+            inner = h.get("hooks", [])
+            has_marker = False
+            for ih in inner:
+                if isinstance(ih, dict) and marker in ih.get("command", ""):
+                    has_marker = True
+                    break
+            if not has_marker:
+                filtered.append(h)
+        hooks[event_name] = filtered
         if len(hooks[event_name]) != original_len:
             changed = True
         # Remove empty arrays
