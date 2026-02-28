@@ -121,19 +121,34 @@ if "hooks" not in settings:
 
 hooks = settings["hooks"]
 
-# Hook definitions to add
+# Hook definitions to add (new matcher-group format for Claude Code 2.1+)
 new_hooks = {
     "SessionStart": {
-        "type": "command",
-        "command": "python3 %s/session_start.py" % hook_dest,
+        "matcher": "",
+        "hooks": [
+            {
+                "type": "command",
+                "command": "python3 %s/session_start.py" % hook_dest,
+            }
+        ],
     },
     "Stop": {
-        "type": "command",
-        "command": "python3 %s/stop.py" % hook_dest,
+        "matcher": "",
+        "hooks": [
+            {
+                "type": "command",
+                "command": "python3 %s/stop.py" % hook_dest,
+            }
+        ],
     },
     "PreCompact": {
-        "type": "command",
-        "command": "python3 %s/pre_compact.py" % hook_dest,
+        "matcher": "",
+        "hooks": [
+            {
+                "type": "command",
+                "command": "python3 %s/pre_compact.py" % hook_dest,
+            }
+        ],
     },
 }
 
@@ -145,9 +160,18 @@ for event_name, hook_def in new_hooks.items():
 
     # Check if we already have a session-recorder hook for this event
     existing_idx = None
-    for i, h in enumerate(hooks[event_name]):
-        if isinstance(h, dict) and marker in h.get("command", ""):
-            existing_idx = i
+    for i, group in enumerate(hooks[event_name]):
+        if isinstance(group, dict):
+            # Check new format (matcher group with inner hooks array)
+            inner = group.get("hooks", [])
+            for ih in inner:
+                if isinstance(ih, dict) and marker in ih.get("command", ""):
+                    existing_idx = i
+                    break
+            # Check old format (flat hook object)
+            if existing_idx is None and marker in group.get("command", ""):
+                existing_idx = i
+        if existing_idx is not None:
             break
 
     if existing_idx is not None:
