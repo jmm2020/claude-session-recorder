@@ -40,11 +40,15 @@ def load_config():
 
     config = dict(_DEFAULTS)
 
-    # Look for config.json in the installed hooks dir
-    candidates = [
+    # Look for config.json — plugin root, legacy hooks dir, or relative to this file
+    candidates = []
+    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+    if plugin_root:
+        candidates.append(Path(plugin_root) / "config.json")
+    candidates.extend([
         Path.home() / ".claude" / "hooks" / "session-recorder" / "config.json",
         Path(__file__).resolve().parent.parent.parent / "config.json",
-    ]
+    ])
 
     for candidate in candidates:
         try:

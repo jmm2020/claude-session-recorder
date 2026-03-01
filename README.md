@@ -2,17 +2,29 @@
 
 Give Claude Code a memory that persists across sessions and survives context compaction.
 
-**claude-session-recorder** is a set of lightweight hooks that automatically save your session state when you exit Claude Code and re-inject it when you start a new session. No database, no Docker, no API keys — just Python 3.8+ and three hook scripts.
+**claude-session-recorder** is a lightweight plugin that automatically saves your session state when you exit Claude Code and re-injects it when you start a new session. No database, no Docker, no API keys — just Python 3.8+ and three hook scripts.
 
-## Quick Start
+## Install
+
+### Plugin (Recommended — Claude Code 1.0.33+)
+
+```bash
+/plugin install session-recorder@claude-plugins-official
+```
+
+Or load from a local directory:
+
+```bash
+claude --plugin-dir /path/to/claude-session-recorder
+```
+
+### Manual (Legacy — Claude Code 2.1.0+)
 
 ```bash
 git clone https://github.com/jmm2020/claude-session-recorder.git
 cd claude-session-recorder
 bash install.sh
 ```
-
-That's it. Start using Claude Code normally — your sessions are now being recorded.
 
 ## How It Works
 
@@ -73,11 +85,9 @@ To have Claude automatically read these, add to your `CLAUDE.md`:
 @~/.claude/context/session-history.md
 ```
 
-The installer will offer to do this for you.
-
 ## Configuration
 
-Edit `~/.claude/hooks/session-recorder/config.json`:
+Edit `config.json` in the plugin root (or `~/.claude/hooks/session-recorder/config.json` for legacy installs):
 
 ```json
 {
@@ -100,23 +110,22 @@ Edit `~/.claude/hooks/session-recorder/config.json`:
 ## Requirements
 
 - **Python 3.8+** (uses only stdlib — zero pip dependencies)
-- **Claude Code** with hook support (2.1.0+, matcher format requires 2.1.49+)
+- **Claude Code 1.0.33+** (plugin install) or **2.1.0+** (manual install)
 - **Linux or macOS** (Windows WSL should work but is untested)
 
 ## Uninstall
 
+### Plugin
+
+```
+/plugin uninstall session-recorder@claude-plugins-official
+```
+
+### Manual
+
 ```bash
 bash uninstall.sh
 ```
-
-This removes:
-- Hook entries from `~/.claude/settings.json`
-- Hook files from `~/.claude/hooks/session-recorder/`
-- Temp recovery file from `/tmp/`
-- Optionally: all saved session data
-- Optionally: context files
-
-Your `settings.json` is backed up before any changes.
 
 ## Architecture
 
@@ -147,16 +156,39 @@ Context Compaction
 
 The transcript parser uses regex to find phrases like "Fixed the timeout", "Changed port to 8080", "Created new endpoint", etc. It filters for technical specificity (must mention file paths, ports, config terms) and deduplicates. This captures the *reasoning* behind changes, not just what files were touched.
 
+## Plugin Structure
+
+```
+claude-session-recorder/
+├── .claude-plugin/
+│   └── plugin.json           # Plugin manifest
+├── hooks/
+│   ├── hooks.json            # Event bindings (SessionStart, Stop, PreCompact)
+│   ├── session_start.py      # Injects context on startup/post-compact
+│   ├── stop.py               # Saves state on exit
+│   ├── pre_compact.py        # Captures state before compaction
+│   └── lib/
+│       ├── __init__.py
+│       ├── transcript.py     # JSONL transcript parser
+│       ├── storage.py        # JSON file storage backend
+│       └── context.py        # Markdown context file generator
+├── config.json               # User-configurable settings
+├── install.sh                # Legacy manual installer
+├── uninstall.sh              # Legacy manual uninstaller
+├── LICENSE                   # MIT
+└── README.md
+```
+
 ## Comparison
 
-| Feature | claude-session-recorder | Default Claude Code |
-|---------|------------------------|-------------------|
+| Feature | session-recorder | Default Claude Code |
+|---------|-----------------|-------------------|
 | Session state on restart | Full context (working on, decisions, files) | None |
 | Post-compact recovery | Rich state re-injection | Brief system summary |
 | Session history | Last 20 sessions with search | None |
 | Related session discovery | Keyword matching across history | None |
 | Dependencies | Python 3.8+ stdlib only | N/A |
-| Setup time | 30 seconds | N/A |
+| Setup time | One command | N/A |
 
 ## License
 

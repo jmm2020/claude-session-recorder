@@ -1,0 +1,25 @@
+{
+  "name": "session-recorder",
+  "description": "Session continuity for Claude Code. Saves session state (decisions, files modified, topics, working context) on exit and re-injects it on startup. Survives context compaction with zero-loss recovery. Pure Python stdlib — no external dependencies.",
+  "version": "1.0.0",
+  "author": {
+    "name": "John Marchetti",
+    "url": "https://github.com/jmm2020"
+  },
+  "homepage": "https://github.com/jmm2020/claude-session-recorder",
+  "repository": "https://github.com/jmm2020/claude-session-recorder",
+  "license": "MIT",
+  "keywords": [
+    "session",
+    "continuity",
+    "memory",
+    "context",
+    "compaction",
+    "recovery",
+    "hooks"
+  ],
+  "minClaudeCodeVersion": "1.0.33",
+  "requirements": {
+    "python": ">=3.8"
+  }
+}
