@@ -3,29 +3,37 @@
 Writes structured markdown files that Claude Code reads as session context.
 No external dependencies — pure stdlib.
 """
-import json
+from __future__ import annotations
+
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from models import SessionRecord, TranscriptState
+
+CONTEXT_DIR: Path = Path.home() / ".claude" / "context"
 
 
-CONTEXT_DIR = Path.home() / ".claude" / "context"
-
-
-def _ensure_context_dir():
+def _ensure_context_dir() -> None:
     """Create context directory if it doesn't exist."""
     CONTEXT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def write_last_session(transcript_state, session_id="", transcript_path="",
-                       last_message="", source="stop hook"):
+def write_last_session(
+    transcript_state: TranscriptState,
+    session_id: str = "",
+    transcript_path: str = "",
+    last_message: str = "",
+    source: str = "stop hook",
+) -> str:
     """Write last-session.md for next-session continuity.
 
-    This is the crash-recovery file — what the next session sees first.
+    This is the crash-recovery file -- what the next session sees first.
 
     Args:
-        transcript_state: dict from parse_transcript()
+        transcript_state: TranscriptState from parse_transcript()
         session_id: Claude session ID
         transcript_path: path to transcript JSONL
         last_message: assistant's last response text
@@ -37,60 +45,60 @@ def write_last_session(transcript_state, session_id="", transcript_path="",
     context_file = CONTEXT_DIR / "last-session.md"
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    turns = transcript_state.get("turn_count", 0)
+    turns = transcript_state.turn_count
 
     try:
         with context_file.open("w") as f:
             f.write("# Last Session\n\n")
-            f.write("**Updated**: %s (written by %s)\n" % (now, source))
+            f.write(f"**Updated**: {now} (written by {source})\n")
             if session_id:
-                f.write("**Session**: %s\n" % session_id)
+                f.write(f"**Session**: {session_id}\n")
             if transcript_path:
-                f.write("**Transcript**: %s\n" % transcript_path)
-            f.write("**Turns**: %s\n\n" % turns)
+                f.write(f"**Transcript**: {transcript_path}\n")
+            f.write(f"**Turns**: {turns}\n\n")
 
             # What was being worked on
-            task_summary = transcript_state.get("task_summary", "")
+            task_summary = transcript_state.task_summary
             if task_summary:
                 f.write("## Working On\n")
-                f.write("%s\n\n" % task_summary)
+                f.write(f"{task_summary}\n\n")
 
             # User's last request
-            last_ask = transcript_state.get("last_user_request", "")
+            last_ask = transcript_state.last_user_request
             if last_ask:
                 f.write("## User's Last Request\n")
-                f.write("%s\n\n" % last_ask[:500])
+                f.write(f"{last_ask[:500]}\n\n")
 
             # Key decisions
-            decisions = transcript_state.get("decisions", [])
+            decisions = transcript_state.decisions
             if decisions:
                 f.write("## Decisions Made\n")
                 for d in decisions[-5:]:
-                    f.write("- %s\n" % d)
+                    f.write(f"- {d}\n")
                 f.write("\n")
 
             # Files modified
-            files = transcript_state.get("files_modified", [])
+            files = transcript_state.files_modified
             if files:
-                f.write("## Files Modified (%d)\n" % len(files))
+                f.write(f"## Files Modified ({len(files)})\n")
                 for fp in files[-10:]:
                     # Show just the filename for brevity
                     short = os.path.basename(fp)
-                    f.write("- `%s`\n" % short)
+                    f.write(f"- `{short}`\n")
                 if len(files) > 10:
-                    f.write("- ... and %d more\n" % (len(files) - 10))
+                    f.write(f"- ... and {len(files) - 10} more\n")
                 f.write("\n")
 
             # Recent topics
-            topics = transcript_state.get("topics", [])
+            topics = transcript_state.topics
             if topics and len(topics) > 1:
                 f.write("## Recent Topics\n")
                 for t in topics[-5:]:
-                    f.write("- %s\n" % t[:150])
+                    f.write(f"- {t[:150]}\n")
                 f.write("\n")
 
             # Last response
-            last_resp = last_message or transcript_state.get("last_assistant_response", "")
+            last_resp = last_message or transcript_state.last_assistant_response
             if last_resp:
                 preview = last_resp[:800]
                 if len(last_resp) > 800:
@@ -99,18 +107,18 @@ def write_last_session(transcript_state, session_id="", transcript_path="",
                         preview = preview[:cut + 1]
                     preview += "\n...(truncated)"
                 f.write("## Assistant's Last Response\n")
-                f.write("%s\n" % preview)
+                f.write(f"{preview}\n")
     except (IOError, OSError) as e:
-        print("Failed to write last-session.md: %s" % e, file=sys.stderr)
+        print(f"Failed to write last-session.md: {e}", file=sys.stderr)
 
     return str(context_file)
 
 
-def write_session_history(sessions):
-    """Write session-history.md from a list of past session dicts.
+def write_session_history(sessions: List[SessionRecord]) -> str:
+    """Write session-history.md from a list of past SessionRecord objects.
 
     Args:
-        sessions: list of session dicts (newest first)
+        sessions: list of SessionRecord (newest first)
     """
     _ensure_context_dir()
     history_file = CONTEXT_DIR / "session-history.md"
@@ -119,48 +127,48 @@ def write_session_history(sessions):
     try:
         with history_file.open("w") as f:
             f.write("# Session History\n\n")
-            f.write("**Updated**: %s\n" % now)
-            f.write("**Sessions stored**: %d\n\n" % len(sessions))
+            f.write(f"**Updated**: {now}\n")
+            f.write(f"**Sessions stored**: {len(sessions)}\n\n")
 
             if not sessions:
                 f.write("No previous sessions recorded yet.\n")
                 return str(history_file)
 
             for i, sess in enumerate(sessions[:10]):
-                sid = sess.get("session_id", "?")[:16]
-                ts = sess.get("timestamp", "?")
+                sid = sess.session_id[:16] if sess.session_id else "?"
+                ts = sess.timestamp
                 if isinstance(ts, str) and len(ts) > 16:
                     ts = ts[:16]
-                turns = sess.get("turn_count", "?")
-                working = sess.get("working_on", "") or sess.get("task_summary", "")
+                turns = sess.turn_count
+                working = sess.working_on or ""
                 if working:
                     working = working[:120].replace("\n", " ")
 
-                f.write("### %d. Session `%s`\n" % (i + 1, sid))
-                f.write("- **When**: %s\n" % ts)
-                f.write("- **Turns**: %s\n" % turns)
+                f.write(f"### {i + 1}. Session `{sid}`\n")
+                f.write(f"- **When**: {ts}\n")
+                f.write(f"- **Turns**: {turns}\n")
                 if working:
-                    f.write("- **Working on**: %s\n" % working)
+                    f.write(f"- **Working on**: {working}\n")
 
-                decisions = sess.get("decisions", [])
+                decisions = sess.decisions
                 if decisions:
                     f.write("- **Decisions**:\n")
                     for d in decisions[-3:]:
-                        f.write("  - %s\n" % d[:150])
+                        f.write(f"  - {d[:150]}\n")
 
-                files = sess.get("files_modified", [])
+                files = sess.files_modified
                 if files:
                     short_files = [os.path.basename(fp) for fp in files[-5:]]
-                    f.write("- **Files**: %s\n" % ", ".join(short_files))
+                    f.write(f"- **Files**: {', '.join(short_files)}\n")
 
                 f.write("\n")
     except (IOError, OSError) as e:
-        print("Failed to write session-history.md: %s" % e, file=sys.stderr)
+        print(f"Failed to write session-history.md: {e}", file=sys.stderr)
 
     return str(history_file)
 
 
-def write_status(session_count=0):
+def write_status(session_count: int = 0) -> str:
     """Write session-status.md with recorder health info.
 
     Args:
@@ -173,9 +181,9 @@ def write_status(session_count=0):
     try:
         with status_file.open("w") as f:
             f.write("# Session Recorder Status\n\n")
-            f.write("**Updated**: %s\n\n" % now)
+            f.write(f"**Updated**: {now}\n\n")
             f.write("## Storage\n")
-            f.write("- Sessions stored: %d\n" % session_count)
+            f.write(f"- Sessions stored: {session_count}\n")
 
             sessions_dir = Path.home() / ".claude" / "session-recorder" / "sessions"
             if sessions_dir.exists():
@@ -183,7 +191,7 @@ def write_status(session_count=0):
                     fp.stat().st_size for fp in sessions_dir.glob("*.json")
                     if fp.is_file()
                 )
-                f.write("- Storage used: %.1f KB\n" % (total_size / 1024.0))
+                f.write(f"- Storage used: {total_size / 1024.0:.1f} KB\n")
             f.write("- Backend: JSON files\n")
             f.write("- Location: ~/.claude/session-recorder/sessions/\n\n")
 
@@ -192,14 +200,15 @@ def write_status(session_count=0):
             for name in ("last-session.md", "session-history.md", "session-status.md"):
                 filepath = context_dir / name
                 exists = filepath.exists()
-                f.write("- %s: %s\n" % (name, "present" if exists else "missing"))
+                status = "present" if exists else "missing"
+                f.write(f"- {name}: {status}\n")
     except (IOError, OSError) as e:
-        print("Failed to write session-status.md: %s" % e, file=sys.stderr)
+        print(f"Failed to write session-status.md: {e}", file=sys.stderr)
 
     return str(status_file)
 
 
-def build_compact_recovery_context(recovery):
+def build_compact_recovery_context(recovery: Dict[str, Any]) -> str:
     """Build rich context string from compact recovery JSON.
 
     This is injected as additionalContext when SessionStart fires
@@ -215,30 +224,30 @@ def build_compact_recovery_context(recovery):
 
     working_on = recovery.get("working_on", "")
     if working_on:
-        parts.append("**Working on**: %s" % working_on)
+        parts.append(f"**Working on**: {working_on}")
 
     last_request = recovery.get("last_user_request", "")
     if last_request:
-        parts.append("**User's last request**: %s" % last_request)
+        parts.append(f"**User's last request**: {last_request}")
 
     decisions = recovery.get("decisions", [])
     if decisions:
         parts.append("**Decisions made this session**:")
         for d in decisions:
-            parts.append("  - %s" % d)
+            parts.append(f"  - {d}")
 
     files = recovery.get("files_modified", [])
     if files:
-        short_files = [os.path.basename(f) for f in files]
-        parts.append("**Files modified** (%d): %s" % (len(files), ", ".join(short_files)))
+        short_files = [os.path.basename(fp) for fp in files]
+        parts.append(f"**Files modified** ({len(files)}): {', '.join(short_files)}")
 
     topics = recovery.get("topics", [])
     if topics:
-        parts.append("**Recent topics**: %s" % " | ".join(t[:100] for t in topics))
+        parts.append(f"**Recent topics**: {' | '.join(t[:100] for t in topics)}")
 
     turn_count = recovery.get("turn_count", 0)
     if turn_count:
-        parts.append("**Session progress**: %d turns before compaction" % turn_count)
+        parts.append(f"**Session progress**: {turn_count} turns before compaction")
 
     last_response = recovery.get("last_assistant_response", "")
     if last_response:
@@ -246,7 +255,7 @@ def build_compact_recovery_context(recovery):
         cut = preview.rfind(". ")
         if cut > 200:
             preview = preview[:cut + 1]
-        parts.append("**Assistant's last response** (truncated): %s" % preview)
+        parts.append(f"**Assistant's last response** (truncated): {preview}")
 
     parts.append(
         "\nAll context files (last-session.md, session-history.md, "

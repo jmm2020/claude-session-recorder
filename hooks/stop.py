@@ -10,43 +10,50 @@ This hook:
 2. Writes last-session.md (crash recovery for next session)
 3. Saves session JSON to persistent storage (session history)
 """
+from __future__ import annotations
+
+import atexit
 import json
 import os
 import sys
 from datetime import datetime
 
-# Redirect stdout to /dev/null IMMEDIATELY — before any imports.
+# Redirect stdout to /dev/null IMMEDIATELY -- before any imports.
 # Libraries sometimes print warnings to stdout which breaks Claude Code.
 _real_stderr = sys.stderr
-_devnull = open(os.devnull, "w")  # noqa: SIM115 — intentionally kept open for process lifetime
+_devnull = open(os.devnull, "w")
+atexit.register(_devnull.close)
 sys.stdout = _devnull
 
 # Add lib directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
 
-def main():
+def main() -> None:
     try:
         from transcript import parse_transcript
         from context import write_last_session
         from storage import save_session
+        from models import SessionRecord
 
         # Read hook input from stdin
-        hook_input = {}
+        hook_input: dict = {}
         if not sys.stdin.isatty():
             try:
                 hook_input = json.load(sys.stdin)
             except (ValueError, EOFError):
                 pass
 
-        last_message = hook_input.get("last_assistant_message", "")
-        session_id = hook_input.get("session_id", "")
-        transcript_path = hook_input.get("transcript_path", "")
+        last_message: str = hook_input.get("last_assistant_message", "")
+        session_id: str = hook_input.get("session_id", "")
+        transcript_path: str = hook_input.get("transcript_path", "")
 
         # Parse transcript for structured state
-        transcript_state = {}
-        if transcript_path:
-            transcript_state = parse_transcript(transcript_path)
+        transcript_state = parse_transcript(transcript_path) if transcript_path else None
+
+        if transcript_state is None:
+            from models import TranscriptState
+            transcript_state = TranscriptState()
 
         # Write last-session.md (crash recovery)
         write_last_session(
@@ -58,33 +65,32 @@ def main():
         )
 
         # Save session to persistent storage
-        turn_count = transcript_state.get("turn_count", 0)
+        turn_count = transcript_state.turn_count
         if turn_count >= 1:
-            session_data = {
-                "session_id": session_id,
-                "timestamp": datetime.now().isoformat(),
-                "turn_count": turn_count,
-                "working_on": transcript_state.get("task_summary", ""),
-                "last_user_request": transcript_state.get("last_user_request", ""),
-                "last_assistant_response": transcript_state.get("last_assistant_response", "")[:500],
-                "decisions": transcript_state.get("decisions", []),
-                "files_modified": transcript_state.get("files_modified", []),
-                "topics": transcript_state.get("topics", []),
-            }
+            session_data = SessionRecord(
+                session_id=session_id,
+                timestamp=datetime.now().isoformat(),
+                turn_count=turn_count,
+                working_on=transcript_state.task_summary,
+                last_user_request=transcript_state.last_user_request,
+                last_assistant_response=transcript_state.last_assistant_response[:500],
+                decisions=transcript_state.decisions,
+                files_modified=transcript_state.files_modified,
+                topics=transcript_state.topics,
+            )
             save_session(session_data)
 
-            turns = turn_count
-            files = len(transcript_state.get("files_modified", []))
-            decisions = len(transcript_state.get("decisions", []))
+            files = len(transcript_state.files_modified)
+            decisions = len(transcript_state.decisions)
             print(
-                "Session saved (%d turns, %d files, %d decisions)" % (turns, files, decisions),
+                f"Session saved ({turn_count} turns, {files} files, {decisions} decisions)",
                 file=_real_stderr,
             )
         else:
             print("Session too short to save (< 1 turn)", file=_real_stderr)
 
     except Exception as e:
-        print("Stop hook error (non-fatal): %s" % e, file=_real_stderr)
+        print(f"Stop hook error (non-fatal): {e}", file=_real_stderr)
 
 
 if __name__ == "__main__":

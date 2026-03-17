@@ -1,0 +1,31 @@
+[project]
+name = "claude-session-recorder"
+version = "1.0.0"
+description = "Session continuity for Claude Code — persists state across sessions and survives context compaction"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [{name = "John Marchetti", email = ""}]
+readme = "README.md"
+keywords = ["claude", "claude-code", "session", "continuity", "hooks"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "TCH"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["hooks"]

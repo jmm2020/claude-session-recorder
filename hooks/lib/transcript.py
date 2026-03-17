@@ -3,50 +3,33 @@
 Extracts structured task state from Claude Code session transcripts (JSONL).
 Pure stdlib — no external dependencies.
 """
+from __future__ import annotations
+
 import json
 import os
 import re
 import sys
+from typing import Optional
+
+from models import TranscriptState
 
 
-def parse_transcript(transcript_path, max_user_msgs=15):
+def parse_transcript(transcript_path: Optional[str], max_user_msgs: int = 15) -> TranscriptState:
     """Parse a Claude Code transcript JSONL into structured session state.
 
-    Returns dict with:
-      - turn_count: actual user turn count
-      - user_messages: list of user text messages (last N)
-      - assistant_messages: list of assistant text messages (last N)
-      - last_user_request: the user's most recent question/instruction
-      - last_assistant_response: truncated last response
-      - files_modified: list of file paths edited/written
-      - tools_used: set of tool names used
-      - task_summary: brief description of what was being worked on
-      - topics: key topics from recent exchanges
-      - decisions: extracted decisions/fixes from assistant messages
-      - message_count: total entries in transcript
+    Returns a TranscriptState dataclass with turn_count, messages, files,
+    tools, topics, decisions, and task summary.
     """
-    result = {
-        "turn_count": 0,
-        "user_messages": [],
-        "assistant_messages": [],
-        "last_user_request": "",
-        "last_assistant_response": "",
-        "files_modified": [],
-        "tools_used": [],
-        "task_summary": "",
-        "topics": [],
-        "decisions": [],
-        "message_count": 0,
-    }
+    result = TranscriptState()
 
     if not transcript_path or not os.path.exists(transcript_path):
         return result
 
     try:
-        user_msgs = []
-        assistant_msgs = []
-        files_modified = set()
-        tools_used = set()
+        user_msgs: list[str] = []
+        assistant_msgs: list[str] = []
+        files_modified: set[str] = set()
+        tools_used: set[str] = set()
 
         with open(transcript_path, "r") as f:
             for line in f:
@@ -58,7 +41,7 @@ def parse_transcript(transcript_path, max_user_msgs=15):
                 except (ValueError, KeyError):
                     continue
 
-                result["message_count"] += 1
+                result.message_count += 1
                 entry_type = entry.get("type", "")
 
                 if entry_type == "user":
@@ -107,7 +90,7 @@ def parse_transcript(transcript_path, max_user_msgs=15):
                                         cmd = inp.get("command", "")
                                         if cmd:
                                             first_word = cmd.split()[0] if cmd.split() else ""
-                                            tools_used.add("Bash(%s)" % first_word)
+                                            tools_used.add(f"Bash({first_word})")
                         text = " ".join(text_parts).strip()
                         if text:
                             assistant_msgs.append(text)
@@ -119,28 +102,28 @@ def parse_transcript(transcript_path, max_user_msgs=15):
         user_msgs = user_msgs[-max_user_msgs:]
         assistant_msgs = assistant_msgs[-max_user_msgs:]
 
-        result["turn_count"] = actual_turn_count
-        result["user_messages"] = user_msgs
-        result["assistant_messages"] = assistant_msgs
-        result["files_modified"] = sorted(files_modified)
-        result["tools_used"] = sorted(tools_used)
+        result.turn_count = actual_turn_count
+        result.user_messages = user_msgs
+        result.assistant_messages = assistant_msgs
+        result.files_modified = sorted(files_modified)
+        result.tools_used = sorted(tools_used)
 
         if user_msgs:
-            result["last_user_request"] = user_msgs[-1][:500]
+            result.last_user_request = user_msgs[-1][:500]
 
         if assistant_msgs:
-            result["last_assistant_response"] = assistant_msgs[-1][:1500]
+            result.last_assistant_response = assistant_msgs[-1][:1500]
 
         # Extract topics from user messages
-        topics = []
+        topics: list[str] = []
         for msg in user_msgs[-5:]:
             topic = msg.split("\n")[0][:150]
             if topic and len(topic) > 5:
                 topics.append(topic)
-        result["topics"] = topics
+        result.topics = topics
 
         # Extract decisions from assistant messages
-        decisions = []
+        decisions: list[str] = []
         decision_re = re.compile(
             r'(?:fixed|changed|updated|switched|corrected|deployed|built|'
             r'created|implemented|verified|configured|renamed|added|removed|'
@@ -169,14 +152,14 @@ def parse_transcript(transcript_path, max_user_msgs=15):
                 if 20 < len(text) < 200:
                     decisions.append(text[0].upper() + text[1:])
 
-        seen = set()
-        unique = []
+        seen: set[str] = set()
+        unique: list[str] = []
         for d in decisions:
             key = d[:40].lower()
             if key not in seen:
                 seen.add(key)
                 unique.append(d)
-        result["decisions"] = unique[-5:]
+        result.decisions = unique[-5:]
 
         # Build task summary
         task_stopwords = {
@@ -199,9 +182,9 @@ def parse_transcript(transcript_path, max_user_msgs=15):
         if not task_topic and topics:
             task_topic = topics[-1][:120]
 
-        result["task_summary"] = task_topic
+        result.task_summary = task_topic
 
     except Exception as e:
-        print("Transcript parse error (non-fatal): %s" % e, file=sys.stderr)
+        print(f"Transcript parse error (non-fatal): {e}", file=sys.stderr)
 
     return result

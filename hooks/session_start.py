@@ -10,25 +10,26 @@ Queries:
   - Related past sessions via keyword matching
   - Compact recovery state (when source="compact")
 """
+from __future__ import annotations
+
 import json
 import os
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # Add lib directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
-COMPACT_RECOVERY_FILE = os.path.join(
+COMPACT_RECOVERY_FILE: str = os.path.join(
     os.environ.get("TMPDIR", "/tmp"),
     "claude_session_memory_recovery.json",
 )
 
 
-def _extract_keywords_from_last_session():
+def _extract_keywords_from_last_session() -> list[str]:
     """Extract keywords from last-session.md for related session search."""
-    keywords = []
+    keywords: list[str] = []
     try:
         last_session = Path.home() / ".claude" / "context" / "last-session.md"
         if not last_session.exists():
@@ -51,8 +52,8 @@ def _extract_keywords_from_last_session():
             keywords.extend(w.lower() for w in words[:10])
 
         # Deduplicate while preserving order
-        seen = set()
-        unique = []
+        seen: set[str] = set()
+        unique: list[str] = []
         # Filter out very common words
         stopwords = {
             "the", "and", "for", "that", "this", "with", "from", "have",
@@ -69,7 +70,7 @@ def _extract_keywords_from_last_session():
         return []
 
 
-def _update_context_files():
+def _update_context_files() -> None:
     """Write session-history.md and session-status.md from stored sessions."""
     try:
         from storage import load_sessions
@@ -82,16 +83,16 @@ def _update_context_files():
         pass
 
 
-def main():
+def main() -> None:
     # Read hook input from stdin
-    hook_input = {}
+    hook_input: dict = {}
     if not sys.stdin.isatty():
         try:
             hook_input = json.load(sys.stdin)
         except (ValueError, EOFError):
             pass
 
-    source = hook_input.get("source", "startup")
+    source: str = hook_input.get("source", "startup")
 
     try:
         # Always: update session history and status files
@@ -109,7 +110,7 @@ def main():
                     from context import build_compact_recovery_context
                     additional = build_compact_recovery_context(recovery)
 
-                    # Clean up — one-time use
+                    # Clean up -- one-time use
                     try:
                         os.remove(COMPACT_RECOVERY_FILE)
                     except OSError:
@@ -136,12 +137,12 @@ def main():
                     if related:
                         parts = ["Related past sessions found:"]
                         for sess in related:
-                            sid = sess.get("session_id", "?")[:16]
-                            working = sess.get("working_on", "")[:100]
-                            turns = sess.get("turn_count", "?")
+                            sid = sess.session_id[:16] if sess.session_id else "?"
+                            working = sess.working_on[:100] if sess.working_on else ""
+                            turns = sess.turn_count
                             if working:
                                 parts.append(
-                                    "- Session %s (%s turns): %s" % (sid, turns, working)
+                                    f"- Session {sid} ({turns} turns): {working}"
                                 )
                         if len(parts) > 1:
                             additional = "\n".join(parts)
