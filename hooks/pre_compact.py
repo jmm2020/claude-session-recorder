@@ -33,7 +33,7 @@ COMPACT_RECOVERY_FILE: str = os.path.join(
 )
 
 
-def _write_compact_recovery(hook_input: dict, transcript_state: "TranscriptState") -> None:
+def _write_compact_recovery(hook_input: dict, transcript_state: object) -> None:
     """Write rich recovery state for post-compact SessionStart re-injection.
 
     This file is the handoff between PreCompact and SessionStart. When

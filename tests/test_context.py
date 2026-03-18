@@ -12,7 +12,10 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "hooks", "lib"))
 
 from models import SessionRecord, TranscriptState
-from context import build_compact_recovery_context, write_last_session, write_session_history, write_status
+from context import (
+    build_compact_recovery_context, write_last_session,
+    write_session_history, write_status,
+)
 
 
 class TestWriteLastSession(unittest.TestCase):

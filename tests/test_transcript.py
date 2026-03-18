@@ -46,7 +46,7 @@ class TestParseTranscript(unittest.TestCase):
                 "type": "assistant",
                 "message": {
                     "content": [
-                        {"type": "text", "text": "I fixed the timeout in hooks/stop.py from 5s to 15s."},
+                        {"type": "text", "text": "I fixed the timeout in stop.py from 5s to 15s."},
                     ]
                 },
             },
@@ -105,9 +105,11 @@ class TestParseTranscript(unittest.TestCase):
 
     def test_system_reminders_filtered(self) -> None:
         entries = [
-            {"type": "user", "message": {"content": "<system-reminder>injected context</system-reminder>"}},
+            {"type": "user", "message": {
+                "content": "<system-reminder>injected</system-reminder>"}},
             {"type": "user", "message": {"content": "Do the real work"}},
-            {"type": "user", "message": {"content": "<local-command-stdout>ok</local-command-stdout>"}},
+            {"type": "user", "message": {
+                "content": "<local-command-stdout>ok</local-command-stdout>"}},
             {"type": "user", "message": {"content": "<command-name>/help</command-name>"}},
             {"type": "user", "message": {"content": "<task-notification>done</task-notification>"}},
         ]
@@ -264,7 +266,8 @@ class TestTaskSummary(unittest.TestCase):
 
     def test_uses_topic_fallback(self) -> None:
         entries = [
-            {"type": "user", "message": {"content": "Short msg that is long enough for a topic extraction"}},
+            {"type": "user", "message": {
+                "content": "Short msg that is long enough for topic extraction"}},
         ]
         with tempfile.TemporaryDirectory() as tmpdir:
             path = _write_transcript(entries, tmpdir)
